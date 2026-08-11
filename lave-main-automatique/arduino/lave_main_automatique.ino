@@ -1,128 +1,140 @@
-const byte PIN_TRIG = 2;
-const byte PIN_ECHO = 3;
+struct Configuration {
+  byte trig;
+  byte echo;
+  byte leds[4];
+  byte interieurRouge;
+  byte interieurVert;
+  byte bouton;
+  byte relais;
+  float distances[4];
+  unsigned long debounce;
+  unsigned long timeoutEcho;
+  unsigned long intervalleMesure;
+};
 
-const byte LED_L1 = 4;
-const byte LED_L2 = 5;
-const byte LED_L3 = 6;
-const byte LED_L4 = 7;
+Configuration config = {
+  2,
+  3,
+  {4, 5, 6, 7},
+  8,
+  9,
+  10,
+  11,
+  {40.0, 30.0, 20.0, 10.0},
+  50,
+  40,
+  60
+};
 
-const byte LED_INTERIEUR_ROUGE = 8;
-const byte LED_INTERIEUR_VERT = 9;
-const byte BOUTON = 10;
-const byte RELAIS_POMPE = 11;
+struct Etat {
+  bool actif;
+  bool boutonDernier;
+  bool boutonStable;
+  unsigned long changementBouton;
+  unsigned long derniereMesure;
+};
 
-const float DISTANCE_L1 = 40.0;
-const float DISTANCE_L2 = 30.0;
-const float DISTANCE_L3 = 20.0;
-const float DISTANCE_L4 = 10.0;
+Etat etat = {false, HIGH, HIGH, 0, 0};
 
-const unsigned long DEBOUNCE_MS = 50;
-const unsigned long TEMPS_MAX_MESURE_MS = 40;
-const unsigned long DELAI_MESURE_MS = 60;
-
-bool systemeActif = false;
-bool dernierEtatBouton = HIGH;
-bool etatStableBouton = HIGH;
-unsigned long dernierChangementBouton = 0;
-unsigned long derniereMesure = 0;
-
-float mesurerDistanceCm() {
-  digitalWrite(PIN_TRIG, LOW);
+float mesurerDistance() {
+  digitalWrite(config.trig, LOW);
   delayMicroseconds(3);
-  digitalWrite(PIN_TRIG, HIGH);
+  digitalWrite(config.trig, HIGH);
   delayMicroseconds(10);
-  digitalWrite(PIN_TRIG, LOW);
+  digitalWrite(config.trig, LOW);
 
-  unsigned long duree = pulseIn(PIN_ECHO, HIGH, TEMPS_MAX_MESURE_MS * 1000UL);
+  unsigned long duree = pulseIn(config.echo, HIGH, config.timeoutEcho * 1000UL);
 
   if (duree == 0) {
-    return -1.0;
+    return -1;
   }
 
   return duree * 0.0343 / 2.0;
 }
 
-void reglerSorties(bool l1, bool l2, bool l3, bool l4, bool pompeActive) {
-  digitalWrite(LED_L1, l1);
-  digitalWrite(LED_L2, l2);
-  digitalWrite(LED_L3, l3);
-  digitalWrite(LED_L4, l4);
-  digitalWrite(RELAIS_POMPE, pompeActive);
-  digitalWrite(LED_INTERIEUR_ROUGE, !pompeActive);
-  digitalWrite(LED_INTERIEUR_VERT, pompeActive);
+void commander(bool pompe) {
+  for (byte i = 0; i < 4; i++) {
+    digitalWrite(config.leds[i], LOW);
+  }
+
+  digitalWrite(config.relais, pompe ? HIGH : LOW);
+  digitalWrite(config.interieurRouge, pompe ? LOW : HIGH);
+  digitalWrite(config.interieurVert, pompe ? HIGH : LOW);
 }
 
-void arreterSysteme() {
-  reglerSorties(false, false, false, false, false);
-}
-
-void afficherProgression(float distance) {
-  if (!systemeActif || distance < 0.0 || distance > DISTANCE_L1) {
-    arreterSysteme();
+void progression(float distance) {
+  if (!etat.actif || distance < 0 || distance > config.distances[0]) {
+    commander(false);
     return;
   }
 
-  bool l1 = distance <= DISTANCE_L1;
-  bool l2 = distance <= DISTANCE_L2;
-  bool l3 = distance <= DISTANCE_L3;
-  bool l4 = distance <= DISTANCE_L4;
-  bool pompeActive = l4;
+  byte lignes = 0;
 
-  reglerSorties(l1, l2, l3, l4, pompeActive);
+  for (byte i = 0; i < 4; i++) {
+    if (distance <= config.distances[i]) {
+      lignes = i + 1;
+    }
+  }
+
+  for (byte i = 0; i < lignes; i++) {
+    digitalWrite(config.leds[i], HIGH);
+  }
+
+  commander(lignes == 4);
+
+  for (byte i = 0; i < lignes; i++) {
+    digitalWrite(config.leds[i], HIGH);
+  }
 }
 
 void gererBouton() {
-  bool lecture = digitalRead(BOUTON);
+  bool lecture = digitalRead(config.bouton);
 
-  if (lecture != dernierEtatBouton) {
-    dernierChangementBouton = millis();
-    dernierEtatBouton = lecture;
+  if (lecture != etat.boutonDernier) {
+    etat.changementBouton = millis();
+    etat.boutonDernier = lecture;
   }
 
-  if (millis() - dernierChangementBouton >= DEBOUNCE_MS) {
-    if (lecture != etatStableBouton) {
-      etatStableBouton = lecture;
+  if (millis() - etat.changementBouton >= config.debounce && lecture != etat.boutonStable) {
+    etat.boutonStable = lecture;
 
-      if (etatStableBouton == LOW) {
-        systemeActif = !systemeActif;
+    if (etat.boutonStable == LOW) {
+      etat.actif = !etat.actif;
 
-        if (!systemeActif) {
-          arreterSysteme();
-        }
+      if (!etat.actif) {
+        commander(false);
       }
     }
   }
 }
 
 void setup() {
-  pinMode(PIN_TRIG, OUTPUT);
-  pinMode(PIN_ECHO, INPUT);
+  pinMode(config.trig, OUTPUT);
+  pinMode(config.echo, INPUT);
 
-  pinMode(LED_L1, OUTPUT);
-  pinMode(LED_L2, OUTPUT);
-  pinMode(LED_L3, OUTPUT);
-  pinMode(LED_L4, OUTPUT);
+  for (byte i = 0; i < 4; i++) {
+    pinMode(config.leds[i], OUTPUT);
+  }
 
-  pinMode(LED_INTERIEUR_ROUGE, OUTPUT);
-  pinMode(LED_INTERIEUR_VERT, OUTPUT);
-  pinMode(BOUTON, INPUT_PULLUP);
-  pinMode(RELAIS_POMPE, OUTPUT);
+  pinMode(config.interieurRouge, OUTPUT);
+  pinMode(config.interieurVert, OUTPUT);
+  pinMode(config.bouton, INPUT_PULLUP);
+  pinMode(config.relais, OUTPUT);
 
-  digitalWrite(PIN_TRIG, LOW);
-  arreterSysteme();
+  digitalWrite(config.trig, LOW);
+  commander(false);
 }
 
 void loop() {
   gererBouton();
 
-  if (!systemeActif) {
-    arreterSysteme();
+  if (!etat.actif) {
+    commander(false);
     return;
   }
 
-  if (millis() - derniereMesure >= DELAI_MESURE_MS) {
-    derniereMesure = millis();
-    float distance = mesurerDistanceCm();
-    afficherProgression(distance);
+  if (millis() - etat.derniereMesure >= config.intervalleMesure) {
+    etat.derniereMesure = millis();
+    progression(mesurerDistance());
   }
 }
