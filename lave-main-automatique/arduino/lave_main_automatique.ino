@@ -9,7 +9,7 @@ const byte LED_L4 = 7;
 const byte LED_INTERIEUR_ROUGE = 8;
 const byte LED_INTERIEUR_VERT = 9;
 const byte BOUTON = 10;
-const byte POMPE = 11;
+const byte RELAIS_POMPE = 11;
 
 const float DISTANCE_L1 = 40.0;
 const float DISTANCE_L2 = 30.0;
@@ -47,7 +47,7 @@ void reglerSorties(bool l1, bool l2, bool l3, bool l4, bool pompeActive) {
   digitalWrite(LED_L2, l2);
   digitalWrite(LED_L3, l3);
   digitalWrite(LED_L4, l4);
-  digitalWrite(POMPE, pompeActive);
+  digitalWrite(RELAIS_POMPE, pompeActive);
   digitalWrite(LED_INTERIEUR_ROUGE, !pompeActive);
   digitalWrite(LED_INTERIEUR_VERT, pompeActive);
 }
@@ -106,7 +106,7 @@ void setup() {
   pinMode(LED_INTERIEUR_ROUGE, OUTPUT);
   pinMode(LED_INTERIEUR_VERT, OUTPUT);
   pinMode(BOUTON, INPUT_PULLUP);
-  pinMode(POMPE, OUTPUT);
+  pinMode(RELAIS_POMPE, OUTPUT);
 
   digitalWrite(PIN_TRIG, LOW);
   arreterSysteme();
