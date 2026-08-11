@@ -52,19 +52,23 @@ float mesurerDistance() {
   return duree * 0.0343 / 2.0;
 }
 
-void commander(bool pompe) {
+void commanderPompe(bool active) {
+  digitalWrite(config.relais, active ? HIGH : LOW);
+  digitalWrite(config.interieurRouge, active ? LOW : HIGH);
+  digitalWrite(config.interieurVert, active ? HIGH : LOW);
+}
+
+void eteindreLeds() {
   for (byte i = 0; i < 4; i++) {
     digitalWrite(config.leds[i], LOW);
   }
-
-  digitalWrite(config.relais, pompe ? HIGH : LOW);
-  digitalWrite(config.interieurRouge, pompe ? LOW : HIGH);
-  digitalWrite(config.interieurVert, pompe ? HIGH : LOW);
 }
 
 void progression(float distance) {
+  eteindreLeds();
+
   if (!etat.actif || distance < 0 || distance > config.distances[0]) {
-    commander(false);
+    commanderPompe(false);
     return;
   }
 
@@ -80,11 +84,12 @@ void progression(float distance) {
     digitalWrite(config.leds[i], HIGH);
   }
 
-  commander(lignes == 4);
+  commanderPompe(lignes == 4);
+}
 
-  for (byte i = 0; i < lignes; i++) {
-    digitalWrite(config.leds[i], HIGH);
-  }
+void arreterSysteme() {
+  eteindreLeds();
+  commanderPompe(false);
 }
 
 void gererBouton() {
@@ -102,7 +107,7 @@ void gererBouton() {
       etat.actif = !etat.actif;
 
       if (!etat.actif) {
-        commander(false);
+        arreterSysteme();
       }
     }
   }
@@ -122,14 +127,14 @@ void setup() {
   pinMode(config.relais, OUTPUT);
 
   digitalWrite(config.trig, LOW);
-  commander(false);
+  arreterSysteme();
 }
 
 void loop() {
   gererBouton();
 
   if (!etat.actif) {
-    commander(false);
+    arreterSysteme();
     return;
   }
 
