@@ -13,7 +13,7 @@
 | Éclairage intérieur rouge | D8 |
 | Éclairage intérieur vert | D9 |
 | Bouton poussoir | D10 |
-| Commande pompe | D11 |
+| Commande relais pompe | D11 |
 
 ## HC-SR04
 
@@ -54,13 +54,33 @@ LED verte : D9
 
 Les deux sorties doivent utiliser des résistances de limitation si les LEDs sont individuelles.
 
-## Pompe
+## Relais 5 V et pompe
 
-La sortie D11 commande un MOSFET ou un module relais.
+La broche D11 commande la bobine du relais 5 V.
 
-La pompe doit recevoir son alimentation depuis une source adaptée à sa tension nominale.
+Broche 1 du relais : borne de la bobine
 
-Pour une pompe à courant continu commandée par MOSFET, prévoir une diode de roue libre adaptée au courant de la pompe.
+Broche 2 du relais : borne de la bobine
+
+Broche 3 du relais : NC
+
+Broche 4 du relais : NO
+
+Broche 5 du relais : COM
+
+Pour la pompe, utiliser COM et NO afin que la pompe soit arrêtée lorsque le relais est au repos.
+
+Le circuit de commande de la bobine dépend du type de relais utilisé. Si le relais est un relais électromécanique nu, il ne faut pas connecter directement sa bobine à une broche Arduino. Utiliser un étage de commande adapté. Si le relais est un module 5 V prévu pour Arduino, connecter son entrée de commande conformément au module.
+
+Circuit de puissance recommandé :
+
+Alimentation pompe positive vers COM.
+
+NO vers le positif de la pompe.
+
+Négatif de la pompe vers le négatif de son alimentation.
+
+La pompe doit recevoir une alimentation adaptée à sa tension nominale et à son courant de démarrage.
 
 La broche D11 ne doit jamais alimenter directement la pompe.
 
